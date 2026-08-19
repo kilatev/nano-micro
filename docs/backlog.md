@@ -8,17 +8,18 @@ inspected.
 ## Status legend
 
 - `ACTIVE`: the only task that may be implemented now.
+- `COMPLETE`: verified and closed.
 - `READY`: sufficiently specified, but blocked by an earlier task.
 - `SKELETON`: outcome agreed; detailed plan must be written just in time.
 
 ## M0 — Bootstrap
 
-- `ACTIVE` [`M0-bootstrap.md`](tasks/M0-bootstrap.md)
+- `COMPLETE` [`M0-bootstrap.md`](tasks/M0-bootstrap.md)
 
 ## M1 — Workbench shell
 
-- `READY` [`M1.1-plugin-spike.md`](tasks/M1.1-plugin-spike.md)
-- `READY` [`M1.2-sidebar-prototype.md`](tasks/M1.2-sidebar-prototype.md)
+- `COMPLETE` [`M1.1-plugin-spike.md`](tasks/M1.1-plugin-spike.md)
+- `ACTIVE` [`M1.2-sidebar-prototype.md`](tasks/M1.2-sidebar-prototype.md)
 - `READY` [`M1.3-dock-blocker-decision.md`](tasks/M1.3-dock-blocker-decision.md)
 
 ## M2 — Explorer
@@ -70,4 +71,3 @@ At the end of each task:
 2. Refine only the next blocked task using those facts.
 3. Change exactly one task to `ACTIVE`.
 4. Do not expand later skeletons unless a new dependency is discovered.
-

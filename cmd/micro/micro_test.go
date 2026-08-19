@@ -156,6 +156,12 @@ func openFile(file string) {
 	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
 }
 
+func runCommand(command string) {
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	injectString(command)
+	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
+}
+
 func findBuffer(file string) *buffer.Buffer {
 	var buf *buffer.Buffer
 	file = util.ResolvePath(file)
@@ -228,6 +234,26 @@ func TestSimpleEdit(t *testing.T) {
 	}
 
 	assert.Equal(t, "firstfoobar\nbase content\n", string(data))
+}
+
+func TestWorkbench(t *testing.T) {
+	file := createTestFile(t, "base content")
+	openFile(file)
+	original := findBuffer(file)
+
+	runCommand("workbench")
+
+	toolPane := action.MainTab().CurPane()
+	tool := toolPane.Buf
+	assert.Equal(t, "Explorer\nSearch\nGit\n", string(tool.Bytes()))
+	assert.True(t, tool.Type.Readonly)
+	assert.True(t, tool.Type.Scratch)
+	assert.Same(t, original, findBuffer(file))
+
+	view := toolPane.GetView()
+	injectMouse(view.X, view.Y, tcell.Button1, tcell.ModNone)
+	assert.Equal(t, "Workbench (selected)", tool.GetName())
+	toolPane.ForceQuit()
 }
 
 func TestMouse(t *testing.T) {

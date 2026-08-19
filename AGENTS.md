@@ -48,3 +48,11 @@ editor with a VS Code-like workbench.
 - Never run a Git mutation against an ambiguous or unintended path.
 - Text operations must handle Unicode correctly.
 - Recovery data must never silently overwrite disk content.
+
+## Verified M0 commands
+
+Run from the repository root with Go 1.19 or newer:
+
+- `make build`
+- `make test`
+- `./micro -version`

@@ -1,6 +1,6 @@
 # Current state
 
-Active milestone: M0
+Active milestone: M1
 
 ## Completed
 
@@ -8,10 +8,22 @@ Active milestone: M0
 - Choice of Micro as the editor core.
 - Agreement on plugin-first architecture and safety boundaries.
 - Outcome-oriented task inventory for M0-M7.
+- `make build` and `make test` pass with Go 1.26.5 on Linux.
+- The built binary reports `0.0.0-unknown` and commit `e3facebf`; no reachable
+  release tag is present in this checkout.
+- Manual edit/save/reopen verification passed in a real terminal using a new
+  temporary file containing `M0 reopen check ✓`.
+- M1.1 workbench plugin spike passed: `workbench` opens a read-only scratch
+  buffer in a vertical split, preserving the file buffer; its mouse handler
+  was verified in both the simulated screen and a real terminal.
 
 ## Current objective
 
-Establish a clean, reproducible upstream baseline.
+M1.1 is complete. Do not begin M1.2 until its plan is reviewed.
+
+## Blocker
+
+None for M1.1.
 
 ## Do not start yet
 
