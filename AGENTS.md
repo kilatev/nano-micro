@@ -42,6 +42,26 @@ editor with a VS Code-like workbench.
   - remaining risks.
 - Do not commit unless explicitly requested.
 
+## Command policy
+
+- Use `jj` for version-control work. Local Jujutsu operations are authorized;
+  require confirmation before remote or external operations.
+- Run in-repository `go build`, `go test`, `go fmt`/`gofmt`, `make build`, and
+  `make test` without asking.
+- Other non-destructive inspection, validation, and build commands needed for
+  the active task are authorized. Confirm destructive, ambiguous-path, or
+  external mutations.
+
+### `fukit`
+
+When the user says `fukit`, review the current diff and run the relevant
+validation. If every change belongs to the active task and passes, describe
+`@` with a concise imperative summary, run `jj bookmark set main -r @`, then
+`jj git push --remote origin --bookmark main`, and finish with `jj new`.
+`fukit` is explicit authorization for that one push. Stop and ask if the diff
+includes unrelated changes, validation fails, or Jujutsu's push safety checks
+fail.
+
 ## Safety invariants
 
 - Never lose saved or recovery text.
