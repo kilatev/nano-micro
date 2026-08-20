@@ -30,6 +30,9 @@ Active milestone: M1
   caller-supplied width, receives mouse input without taking editor focus, and
   restores the normal layout when detached. `workbench` now uses a 24-column
   dock; its simulation and pseudo-terminal checks passed.
+- M1.5 binds `Ctrl+E` to toggle the bundled workbench. An explicit user
+  `Ctrl-e` binding remains untouched; users can keep command mode or choose
+  another shortcut in `bindings.json`.
 
 ## Current objective
 

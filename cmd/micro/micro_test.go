@@ -151,15 +151,11 @@ func injectString(str string) {
 }
 
 func openFile(file string) {
-	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
-	injectString(fmt.Sprintf("open %s", file))
-	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
+	action.MainTab().CurPane().HandleCommand(fmt.Sprintf("open %s", file))
 }
 
 func runCommand(command string) {
-	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
-	injectString(command)
-	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
+	action.MainTab().CurPane().HandleCommand(command)
 }
 
 func findBuffer(file string) *buffer.Buffer {
@@ -248,7 +244,7 @@ func TestWorkbench(t *testing.T) {
 	originalView := source.GetView()
 	width, _ := screen.Screen.Size()
 
-	runCommand("workbench")
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
 
 	assert.Same(t, source, tab.CurPane())
 	assert.Len(t, tab.Panes, panes)
@@ -304,7 +300,7 @@ func TestWorkbench(t *testing.T) {
 	assert.Equal(t, "!base content", string(original.Bytes()))
 	injectKey(tcell.KeyCtrlS, rune(tcell.KeyCtrlS), tcell.ModCtrl)
 
-	runCommand("workbench")
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
 	assert.Nil(t, action.Tabs.Dock)
 	assert.Len(t, tab.Panes, panes)
 	assert.Same(t, source, tab.CurPane())
@@ -381,9 +377,7 @@ func TestSearchAndReplace(t *testing.T) {
 		t.Fatalf("Could not find buffer %s", file)
 	}
 
-	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
-	injectString(fmt.Sprintf("replaceall %s %s", "foo", "test_string"))
-	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
+	action.MainTab().CurPane().HandleCommand(fmt.Sprintf("replaceall %s %s", "foo", "test_string"))
 
 	injectKey(tcell.KeyCtrlS, rune(tcell.KeyCtrlS), tcell.ModCtrl)
 
@@ -394,9 +388,7 @@ func TestSearchAndReplace(t *testing.T) {
 
 	assert.Equal(t, srTest2, string(data))
 
-	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
-	injectString(fmt.Sprintf("replace %s %s", "string", "foo"))
-	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
+	action.MainTab().CurPane().HandleCommand(fmt.Sprintf("replace %s %s", "string", "foo"))
 	injectString("ynyny")
 	injectKey(tcell.KeyEscape, 0, tcell.ModNone)
 

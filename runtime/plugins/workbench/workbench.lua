@@ -21,6 +21,7 @@ end
 
 function init()
     config.MakeCommand("workbench", open, config.NoComplete)
+    config.TryBindKey("Ctrl-e", "command:workbench", false)
 end
 
 function open(bp, args)
