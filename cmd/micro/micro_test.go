@@ -240,20 +240,53 @@ func TestWorkbench(t *testing.T) {
 	file := createTestFile(t, "base content")
 	openFile(file)
 	original := findBuffer(file)
+	tab := action.MainTab()
+	source := tab.CurPane()
+	panes := len(tab.Panes)
 
 	runCommand("workbench")
 
-	toolPane := action.MainTab().CurPane()
+	assert.Same(t, source, tab.CurPane())
+	assert.Len(t, tab.Panes, panes+1)
+
+	var toolPane *action.BufPane
+	for _, pane := range tab.Panes {
+		bp, ok := pane.(*action.BufPane)
+		if ok && bp.Buf.Type.Scratch {
+			toolPane = bp
+		}
+	}
+	if toolPane == nil {
+		t.Fatal("workbench sidebar was not opened")
+	}
 	tool := toolPane.Buf
-	assert.Equal(t, "Explorer\nSearch\nGit\n", string(tool.Bytes()))
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n", string(tool.Bytes()))
 	assert.True(t, tool.Type.Readonly)
 	assert.True(t, tool.Type.Scratch)
 	assert.Same(t, original, findBuffer(file))
 
 	view := toolPane.GetView()
-	injectMouse(view.X, view.Y, tcell.Button1, tcell.ModNone)
-	assert.Equal(t, "Workbench (selected)", tool.GetName())
-	toolPane.ForceQuit()
+	injectMouse(view.X, view.Y+1, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+1, tcell.ButtonNone, tcell.ModNone)
+	assert.Equal(t, "  Explorer\n> Search\n  Git\n", string(tool.Bytes()))
+	assert.Same(t, source, tab.CurPane())
+
+	injectMouse(view.X, view.Y+2, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+2, tcell.ButtonNone, tcell.ModNone)
+	assert.Equal(t, "  Explorer\n  Search\n> Git\n", string(tool.Bytes()))
+	assert.Same(t, source, tab.CurPane())
+	assert.Equal(t, "base content", string(original.Bytes()))
+
+	runCommand("workbench")
+	assert.Len(t, tab.Panes, panes)
+	assert.Same(t, source, tab.CurPane())
+
+	source.AddTab()
+	assert.Len(t, tab.Panes, panes)
+	secondTab := action.MainTab()
+	assert.Len(t, secondTab.Panes, 1)
+	secondTab.CurPane().ForceQuit()
+	assert.Same(t, tab, action.MainTab())
 }
 
 func TestMouse(t *testing.T) {
