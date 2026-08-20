@@ -147,6 +147,12 @@ The packages and their contents are listed below (in Go type signatures):
 
     - `Tabs() *TabList`: returns the global tab list.
 
+    - `SetDockBuffer(buf *Buffer, width int) *BufPane`: attach a scratch
+       buffer as the application dock at the given content width. A nil buffer
+       or non-positive width clears the dock.
+
+    - `ClearDock()`: detach and close the application dock buffer.
+
     - `After(t time.Duration, f func())`: run function `f` in the background
        after time `t` elapses. See https://pkg.go.dev/time#Duration for the
        usage of `time.Duration`.

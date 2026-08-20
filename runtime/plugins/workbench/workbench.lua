@@ -1,9 +1,8 @@
 local buffer = import("micro/buffer")
 local config = import("micro/config")
+local micro = import("micro")
 
--- ponytail: one sidebar per source pane; use an application dock if tabs must share one sidebar.
-local sidebars = {}
-local editors = {}
+local tool = nil
 
 local modes = { "Explorer", "Search", "Git" }
 
@@ -25,34 +24,24 @@ function init()
 end
 
 function open(bp, args)
-    local tab = bp:Tab()
-    local source = bp:ID()
-    local sidebar = sidebars[source]
-    if sidebar ~= nil then
-        sidebar:ForceQuit()
-        editors[sidebar:ID()] = nil
-        sidebars[source] = nil
+    if tool ~= nil then
+        micro.ClearDock()
+        tool = nil
         return
     end
 
-    local tool = buffer.NewBuffer("", "")
+    tool = buffer.NewBuffer("", "")
     tool:SetName("Workbench")
     tool.Type.Scratch = true
-    sidebar = bp:VSplitIndex(tool, false)
-    sidebars[source] = sidebar
-    editors[sidebar:ID()] = bp
-    render(sidebar, 1)
-    tab:SetActive(tab:GetPane(bp:ID()))
+    local dock = micro.SetDockBuffer(tool, 24)
+    render(dock, 1)
 end
 
 function onMousePress(bp, event)
-    local tab = bp:Tab()
-    if bp.Buf.Type.Scratch and bp.Buf:GetName() == "Workbench" then
+    if bp.Buf == tool then
         local selected = bp.Cursor.Loc.Y + 1
         if selected >= 1 and selected <= #modes then
             render(bp, selected)
-            local editor = editors[bp:ID()]
-            tab:SetActive(tab:GetPane(editor:ID()))
         end
     end
 end

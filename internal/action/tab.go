@@ -16,7 +16,9 @@ import (
 // at the top of the screen
 type TabList struct {
 	*display.TabWindow
-	List []*Tab
+	List      []*Tab
+	Dock      *BufPane
+	DockWidth int
 }
 
 // NewTabList creates a TabList from a list of buffers by creating a Tab
@@ -90,18 +92,64 @@ func (t *TabList) Resize() {
 	w, h := screen.Screen.Size()
 	iOffset := config.GetInfoBarOffset()
 	InfoBar.Resize(w, h-1)
+	dockWidth := 0
+	if t.Dock != nil && w > 2 {
+		dockWidth = t.DockWidth
+		if dockWidth > w-2 {
+			dockWidth = w - 2
+		}
+	}
+	x, width := dockWidth, w
+	if dockWidth > 0 {
+		x, width = dockWidth+1, w-dockWidth-1
+	}
+	y, height := 0, h-iOffset
 	if tabBarVisible(len(t.List)) {
+		y, height = 1, h-1-iOffset
 		for _, p := range t.List {
-			p.Y = 1
-			p.Node.Resize(w, h-1-iOffset)
+			p.X, p.Y = x, y
+			p.Node.Resize(width, height)
 			p.Resize()
 		}
 	} else if len(t.List) == 1 {
-		t.List[0].Y = 0
-		t.List[0].Node.Resize(w, h-iOffset)
+		t.List[0].X, t.List[0].Y = x, y
+		t.List[0].Node.Resize(width, height)
 		t.List[0].Resize()
 	}
+	if t.Dock != nil {
+		v := t.Dock.GetView()
+		v.X, v.Y = 0, y
+		t.Dock.SetView(v)
+		t.Dock.Resize(dockWidth, height)
+	}
 	t.TabWindow.Resize(w, h)
+}
+
+// SetDockBuffer attaches a scratch buffer as the application dock.
+func SetDockBuffer(buf *buffer.Buffer, width int) *BufPane {
+	if buf == nil || width <= 0 {
+		ClearDock()
+		return nil
+	}
+	if !buf.Type.Scratch {
+		return nil
+	}
+	ClearDock()
+	Tabs.Dock = NewBufPaneFromBuf(buf, MainTab())
+	Tabs.DockWidth = width
+	Tabs.Resize()
+	return Tabs.Dock
+}
+
+// ClearDock detaches and closes the application dock buffer.
+func ClearDock() {
+	if Tabs == nil || Tabs.Dock == nil {
+		return
+	}
+	Tabs.Dock.Close()
+	Tabs.Dock = nil
+	Tabs.DockWidth = 0
+	Tabs.Resize()
 }
 
 // HandleEvent checks for a resize event or a mouse event on the tab bar
@@ -112,6 +160,13 @@ func (t *TabList) HandleEvent(event tcell.Event) {
 		t.Resize()
 	case *tcell.EventMouse:
 		mx, my := e.Position()
+		if t.Dock != nil {
+			v := t.Dock.GetView()
+			if mx >= v.X && mx < v.X+v.Width && my >= v.Y && my < v.Y+v.Height {
+				t.Dock.HandleEvent(event)
+				return
+			}
+		}
 		switch e.Buttons() {
 		case tcell.Button1:
 			if my == t.Y && tabBarVisible(len(t.List)) {
@@ -154,10 +209,20 @@ func (t *TabList) Display() {
 	if tabBarVisible(len(t.List)) {
 		t.TabWindow.Display()
 	}
+	if t.Dock != nil {
+		t.Dock.Display()
+		v := t.Dock.GetView()
+		if v.Width > 0 {
+			display.DrawVerticalDivider(v.X+v.Width, v.Y, v.Height)
+		}
+	}
 }
 
 func (t *TabList) SetActive(a int) {
 	t.TabWindow.SetActive(a)
+	if t.Dock != nil {
+		t.Dock.SetTab(t.List[a])
+	}
 
 	for i, p := range t.List {
 		if i == a {
@@ -180,6 +245,9 @@ func (t *TabList) SetActive(a int) {
 // This prevents situations in which mouse releases are received at the wrong place
 // and the mouse state is still pressed.
 func (t *TabList) ResetMouse() {
+	if t.Dock != nil {
+		t.Dock.resetMouse()
+	}
 	for _, tab := range t.List {
 		if !tab.release && tab.resizing != nil {
 			tab.resizing = nil
@@ -389,7 +457,7 @@ func (t *Tab) Resize() {
 		n := t.GetNode(p.ID())
 		pv := p.GetView()
 		offset := 0
-		if n.X != 0 {
+		if n != t.Node && n.X != 0 {
 			offset = 1
 		}
 		pv.X, pv.Y = n.X+offset, n.Y

@@ -20,6 +20,19 @@ func NewUIWindow(n *views.Node) *UIWindow {
 
 func (w *UIWindow) drawNode(n *views.Node) {
 	cs := n.Children()
+
+	for i, c := range cs {
+		if c.Kind == views.STVert {
+			if i != len(cs)-1 {
+				DrawVerticalDivider(c.X+c.W, c.Y, c.H)
+			}
+		}
+		w.drawNode(c)
+	}
+}
+
+// DrawVerticalDivider draws a themed vertical pane divider.
+func DrawVerticalDivider(x, y, height int) {
 	dividerStyle := config.DefStyle
 	if style, ok := config.Colorscheme["divider"]; ok {
 		dividerStyle = style
@@ -31,21 +44,12 @@ func (w *UIWindow) drawNode(n *views.Node) {
 	}
 
 	divchar, combc, _ := util.DecodeCharacterInString(divchars)
-
-	divreverse := config.GetGlobalOption("divreverse").(bool)
-	if divreverse {
+	if config.GetGlobalOption("divreverse").(bool) {
 		dividerStyle = dividerStyle.Reverse(true)
 	}
 
-	for i, c := range cs {
-		if c.Kind == views.STVert {
-			if i != len(cs)-1 {
-				for h := 0; h < c.H; h++ {
-					screen.SetContent(c.X+c.W, c.Y+h, divchar, combc, dividerStyle)
-				}
-			}
-		}
-		w.drawNode(c)
+	for h := 0; h < height; h++ {
+		screen.SetContent(x, y+h, divchar, combc, dividerStyle)
 	}
 }
 

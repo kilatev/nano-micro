@@ -243,27 +243,32 @@ func TestWorkbench(t *testing.T) {
 	tab := action.MainTab()
 	source := tab.CurPane()
 	panes := len(tab.Panes)
+	root := tab.Node
+	children := len(root.Children())
+	originalView := source.GetView()
+	width, _ := screen.Screen.Size()
 
 	runCommand("workbench")
 
 	assert.Same(t, source, tab.CurPane())
-	assert.Len(t, tab.Panes, panes+1)
-
-	var toolPane *action.BufPane
-	for _, pane := range tab.Panes {
-		bp, ok := pane.(*action.BufPane)
-		if ok && bp.Buf.Type.Scratch {
-			toolPane = bp
-		}
-	}
+	assert.Len(t, tab.Panes, panes)
+	assert.Same(t, root, tab.Node)
+	assert.Len(t, root.Children(), children)
+	toolPane := action.Tabs.Dock
 	if toolPane == nil {
-		t.Fatal("workbench sidebar was not opened")
+		t.Fatal("workbench dock was not opened")
 	}
 	tool := toolPane.Buf
 	assert.Equal(t, "> Explorer\n  Search\n  Git\n", string(tool.Bytes()))
 	assert.True(t, tool.Type.Readonly)
 	assert.True(t, tool.Type.Scratch)
 	assert.Same(t, original, findBuffer(file))
+	assert.Equal(t, 0, toolPane.GetView().X)
+	assert.Equal(t, 24, toolPane.GetView().Width)
+	assert.Equal(t, 25, source.GetView().X)
+	assert.Equal(t, width-25, source.GetView().Width)
+	assert.Nil(t, action.SetDockBuffer(original, 24))
+	assert.Same(t, toolPane, action.Tabs.Dock)
 
 	view := toolPane.GetView()
 	injectMouse(view.X, view.Y+1, tcell.Button1, tcell.ModNone)
@@ -276,17 +281,34 @@ func TestWorkbench(t *testing.T) {
 	assert.Equal(t, "  Explorer\n  Search\n> Git\n", string(tool.Bytes()))
 	assert.Same(t, source, tab.CurPane())
 	assert.Equal(t, "base content", string(original.Bytes()))
-
-	runCommand("workbench")
-	assert.Len(t, tab.Panes, panes)
-	assert.Same(t, source, tab.CurPane())
+	dockContent := string(tool.Bytes())
 
 	source.AddTab()
 	assert.Len(t, tab.Panes, panes)
 	secondTab := action.MainTab()
 	assert.Len(t, secondTab.Panes, 1)
+	assert.Same(t, toolPane, action.Tabs.Dock)
+	assert.Same(t, secondTab, toolPane.Tab())
+	assert.Equal(t, 0, toolPane.GetView().X)
+	assert.Equal(t, 24, toolPane.GetView().Width)
+	assert.Equal(t, 25, secondTab.CurPane().GetView().X)
+	assert.Equal(t, dockContent, string(tool.Bytes()))
 	secondTab.CurPane().ForceQuit()
 	assert.Same(t, tab, action.MainTab())
+	assert.Same(t, tab, toolPane.Tab())
+
+	view = source.GetView()
+	injectMouse(view.X, view.Y, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y, tcell.ButtonNone, tcell.ModNone)
+	injectString("!")
+	assert.Equal(t, "!base content", string(original.Bytes()))
+	injectKey(tcell.KeyCtrlS, rune(tcell.KeyCtrlS), tcell.ModCtrl)
+
+	runCommand("workbench")
+	assert.Nil(t, action.Tabs.Dock)
+	assert.Len(t, tab.Panes, panes)
+	assert.Same(t, source, tab.CurPane())
+	assert.Equal(t, originalView, source.GetView())
 }
 
 func TestMouse(t *testing.T) {

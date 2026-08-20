@@ -21,7 +21,7 @@ inspected.
 - `COMPLETE` [`M1.1-plugin-spike.md`](tasks/M1.1-plugin-spike.md)
 - `COMPLETE` [`M1.2-sidebar-prototype.md`](tasks/M1.2-sidebar-prototype.md)
 - `COMPLETE` [`M1.3-dock-blocker-decision.md`](tasks/M1.3-dock-blocker-decision.md)
-- `ACTIVE` [`M1.4-generic-dock-hook.md`](tasks/M1.4-generic-dock-hook.md)
+- `COMPLETE` [`M1.4-generic-dock-hook.md`](tasks/M1.4-generic-dock-hook.md)
 
 ## M2 — Explorer
 

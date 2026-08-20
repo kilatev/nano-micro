@@ -25,20 +25,22 @@ Active milestone: M1
 - M1.3 reproduced those limitations and recorded the dock decision in
   [`M1.3-dock-blocker.md`](decisions/M1.3-dock-blocker.md): tab-local and
   per-source-pane sidebars are architectural blockers; split width is polish.
+- M1.4 added one optional application-owned left dock. It holds a scratch
+  buffer outside tab split trees, persists across editor tabs, reserves its
+  caller-supplied width, receives mouse input without taking editor focus, and
+  restores the normal layout when detached. `workbench` now uses a 24-column
+  dock; its simulation and pseudo-terminal checks passed.
 
 ## Current objective
 
-M1.3 is complete. Plan the smallest generic application dock hook described in
-[`M1.4-generic-dock-hook.md`](tasks/M1.4-generic-dock-hook.md).
+M1.4 is complete. Do not begin M2 until its first task is refined and reviewed.
 
 ## Blocker
 
-None for M1.4 planning. Do not implement a core dock until its plan is
-reviewed.
+None.
 
 ## Do not start yet
 
-- Core dock implementation.
 - Explorer.
 - LSP.
 - Git UI.
