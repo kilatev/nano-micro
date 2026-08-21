@@ -1,6 +1,6 @@
 # Current state
 
-Active milestone: M2.2 — Explorer Git status badges
+Active milestone: M2.3 — Explorer context menu
 
 ## Completed
 
@@ -37,12 +37,18 @@ Active milestone: M2.2 — Explorer Git status badges
   directory, starts with that root expanded, sorts directories before files,
   hides dot entries by default, and opens clicked files through Micro's normal
   `open` command. The 24-column dock stays attached and does not take focus.
+- M2.2 adds plugin-only Git badges on dock open and `workbench-refresh`. It
+  parses NUL-delimited porcelain-v1 `XY` records, marks changed directories,
+  and renders missing deleted paths as non-openable rows. Non-repositories keep
+  the ordinary Explorer, and failed refreshes preserve the last valid tree.
+- The workbench simulation covers staged, unstaged, untracked, renamed, and
+  deleted paths, including spaces and non-ASCII names. Focused tests,
+  `make test`, `make build`, and `./micro -version` pass.
 
 ## Current objective
 
-Implement M2.2 in the bundled workbench plugin only: explicit, testable Git
-status badges on the M2.1 tree. The M1.5 shortcut and M2.1 read-only tree are
-complete.
+Implement M2.3: a keyboard-accessible Explorer context menu anchored to the
+clicked row. Keep filesystem mutations deferred to M2.4 and M2.5.
 
 ## Blocker
 
@@ -50,7 +56,7 @@ None.
 
 ## Do not start yet
 
-- Explorer work beyond M2.2.
+- Explorer work beyond M2.3.
 - LSP.
 - Git UI.
 - Sessions and recovery.
@@ -60,6 +66,6 @@ None.
 
 1. Enter Plan mode with `/plan`.
 2. Ask Codex to read `AGENTS.md` and the referenced documents.
-3. Work only on `docs/tasks/M1.4-generic-dock-hook.md`.
+3. Work only on `docs/tasks/M2.3-context-menu.md`.
 4. Review the plan before allowing edits.
 5. Run `/review` before accepting the completed milestone.

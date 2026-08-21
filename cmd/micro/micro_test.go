@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-errors/errors"
@@ -198,6 +200,16 @@ func createTestFile(t *testing.T, content string) string {
 	return f.Name()
 }
 
+func runGit(t *testing.T, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", projectDir}, args...)...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+	return string(out)
+}
+
 func TestMain(m *testing.M) {
 	var err error
 	workingDir, err = os.Getwd()
@@ -355,6 +367,8 @@ func TestWorkbenchExplorer(t *testing.T) {
 
 	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  + alpha\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
 	assert.NotContains(t, string(dock.Buf.Bytes()), ".hidden")
+	runCommand("workbench-refresh")
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  + alpha\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
 
 	view := dock.GetView()
 	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
@@ -381,6 +395,84 @@ func TestWorkbenchExplorer(t *testing.T) {
 	assert.NotNil(t, findBuffer(filepath.Join(projectDir, "alpha", "nested.txt")))
 	assert.Same(t, dock, action.Tabs.Dock)
 	assert.Same(t, source, action.MainTab().CurPane())
+	source.OpenBuffer(previous)
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+}
+
+func TestWorkbenchGitStatusBadges(t *testing.T) {
+	runCommand("set workbench.showhidden false")
+	oldName := filepath.Join(projectDir, "rename old.txt")
+	deleted := filepath.Join(projectDir, "alpha", "delete me.txt")
+	if err := os.WriteFile(oldName, []byte("rename me"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(deleted, []byte("delete me"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, "init")
+	runGit(t, "add", "--", ".")
+	runGit(t, "-c", "user.name=Workbench Test", "-c", "user.email=workbench@example.invalid", "commit", "-m", "base")
+
+	if err := os.WriteFile(filepath.Join(projectDir, "a.txt"), []byte("staged"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, "add", "--", "a.txt")
+	runGit(t, "mv", "--", "rename old.txt", "zeta/renamed ü.txt")
+	if err := os.Remove(deleted); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "alpha", "nested.txt"), []byte("unstaged"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	untracked := filepath.Join(projectDir, "alpha", "new ü file.txt")
+	if err := os.WriteFile(untracked, []byte("untracked"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	source := action.MainTab().CurPane()
+	previous := source.Buf
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+	view := dock.GetView()
+	if strings.Contains(string(dock.Buf.Bytes()), "  - alpha [*]") {
+		injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
+		injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	}
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+" [*]\n  + alpha [*]\n  + zeta [*]\n    a.txt [M ]\n", string(dock.Buf.Bytes()))
+
+	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+" [*]\n  - alpha [*]\n      delete me.txt [ D]\n      nested.txt [ M]\n      new ü file.txt [??]\n  + zeta [*]\n    a.txt [M ]\n", string(dock.Buf.Bytes()))
+	injectMouse(view.X, view.Y+5, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+5, tcell.ButtonNone, tcell.ModNone)
+	assert.Nil(t, findBuffer(deleted))
+	injectMouse(view.X, view.Y+6, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+6, tcell.ButtonNone, tcell.ModNone)
+	assert.NotNil(t, findBuffer(filepath.Join(projectDir, "alpha", "nested.txt")))
+	assert.Same(t, source, action.MainTab().CurPane())
+
+	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	injectMouse(view.X, view.Y+5, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+5, tcell.ButtonNone, tcell.ModNone)
+	assert.Contains(t, string(dock.Buf.Bytes()), "      renamed ü.txt [R ]\n")
+	assert.NotContains(t, string(dock.Buf.Bytes()), "rename old.txt")
+
+	afterRefresh := filepath.Join(projectDir, "zeta", "after refresh.txt")
+	if err := os.WriteFile(afterRefresh, []byte("refresh"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	assert.NotContains(t, string(dock.Buf.Bytes()), "after refresh.txt")
+	runCommand("workbench-refresh")
+	assert.Contains(t, string(dock.Buf.Bytes()), "      after refresh.txt [??]\n")
+	lastTree := string(dock.Buf.Bytes())
+	t.Setenv("PATH", t.TempDir())
+	runCommand("workbench-refresh")
+	assert.Equal(t, lastTree, string(dock.Buf.Bytes()))
+
 	source.OpenBuffer(previous)
 	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
 }
