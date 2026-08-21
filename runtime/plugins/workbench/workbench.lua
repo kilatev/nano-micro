@@ -279,29 +279,66 @@ local function rename(row)
     end)
 end
 
-local function move(row)
-    prompt("Move to (path or folder)", "", function(destination)
-        local target, pathErr = targetPath(destination)
+local function isWithin(path, parent)
+    local relative, err = filepath.Rel(parent, path)
+    return err == nil and (relative == "." or (relative ~= ".." and string.sub(relative, 1, 3) ~= ".." .. string.char(os.PathSeparator) and not filepath.IsAbs(relative)))
+end
+
+local function move(row, event)
+    local destinations = {}
+    local function add(path)
+        if row.isDir and isWithin(path, row.path) then
+            return
+        end
+        destinations[#destinations + 1] = path
+        local entries, err = os.ReadDir(path)
+        if err ~= nil then
+            return
+        end
+        local dirs = {}
+        for i = 1, #entries do
+            local entry = entries[i]
+            if entry:IsDir() and (config.GetGlobalOption("workbench.showhidden") or string.sub(entry:Name(), 1, 1) ~= ".") then
+                dirs[#dirs + 1] = entry
+            end
+        end
+        table.sort(dirs, function(a, b) return a:Name() < b:Name() end)
+        for _, entry in ipairs(dirs) do
+            add(filepath.Join(path, entry:Name()))
+        end
+    end
+    add(projectRoot)
+
+    local labels = {}
+    for i, destination in ipairs(destinations) do
+        labels[i] = destination == projectRoot and "." or filepath.Rel(projectRoot, destination)
+    end
+    -- ponytail: menu has no scrolling; add a searchable picker if project trees outgrow the terminal.
+    local target = { path = row.path, version = treeVersion }
+    local x, y = event:Position()
+    micro.ShowMenu(x, y, labels, function(index)
+        if target.version ~= treeVersion or selectedMode ~= 1 then
+            return
+        end
+        local destination = destinations[index]
+        local info, statErr = os.Stat(destination)
+        if statErr ~= nil or not info:IsDir() then
+            micro.InfoBar():Error("Destination no longer exists")
+            return
+        end
+        local path, pathErr = targetPath(filepath.Join(destination, filepath.Base(target.path)))
         if pathErr ~= nil then
             micro.InfoBar():Error(pathErr)
             return
         end
-        local info, statErr = os.Stat(target)
-        if statErr == nil and info:IsDir() then
-            target, pathErr = targetPath(filepath.Join(target, filepath.Base(row.path)))
-            if pathErr ~= nil then
-                micro.InfoBar():Error(pathErr)
-                return
-            end
-            _, statErr = os.Stat(target)
-        end
+        _, statErr = os.Stat(path)
         if statErr == nil then
             micro.InfoBar():Error("Destination already exists")
             return
         end
-        local err = buffer.Rename(row.path, target)
+        local err = buffer.Rename(target.path, path)
         if err ~= nil then
-            micro.InfoBar():Error("Could not move " .. row.path .. ": " .. tostring(err))
+            micro.InfoBar():Error("Could not move " .. target.path .. ": " .. tostring(err))
             return
         end
         micro.Tabs():UpdateNames()
@@ -352,7 +389,7 @@ local function openMenu(bp, row, event)
         elseif action == "Rename" then
             rename(target)
         elseif action == "Move" then
-            move(target)
+            move(target, event)
         elseif action == "Delete" then
             trash(target)
         else

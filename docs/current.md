@@ -1,6 +1,6 @@
 # Current state
 
-Active milestone: M2.6 — Explorer open-buffer filesystem coordination
+Active milestone: none
 
 ## Completed
 
@@ -71,19 +71,24 @@ Active milestone: M2.6 — Explorer open-buffer filesystem coordination
   rename/save, shared open views, conflicting destinations, and filesystem
   failure; focused tests, `make test`, `make build`, and `./micro -version`
   pass.
+- M2.7 replaces the Move path prompt with a project-folder menu. It lists
+  project-relative folders, excludes a moved folder and its descendants, and
+  rechecks stale selections, destination existence, and overwrite protection
+  before using `buffer.Rename`. Simulated tests cover nested selection, stale
+  callbacks, and collisions; manual Move verification passed.
 
 ## Current objective
 
-M2.6 is complete. Refine and activate M2.7 before beginning further Explorer
-work. Sessions and LSP remain absent.
+M2.7 is complete. M2.8 is recorded for a future fuzzy destination search but
+remains a skeleton. Sessions and LSP remain absent.
 
 ## Blocker
 
-M2.7 is still a skeleton task and must be refined before activation.
+M2.8 must be refined and activated before further Explorer work.
 
 ## Do not start yet
 
-- Explorer work beyond M2.6 until M2.7 is refined and activated.
+- Explorer work beyond M2.7 until M2.8 is refined and activated.
 - LSP.
 - Git UI.
 - Sessions and recovery.
