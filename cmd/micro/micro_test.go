@@ -371,6 +371,7 @@ func TestWorkbenchExplorer(t *testing.T) {
 	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  + alpha\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
 
 	view := dock.GetView()
+	assert.Equal(t, "lua:workbench.contextMenu", config.Bindings["buffer"]["MouseRight"])
 	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
 	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
 	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  - alpha\n      nested.txt\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
@@ -397,6 +398,67 @@ func TestWorkbenchExplorer(t *testing.T) {
 	assert.Same(t, source, action.MainTab().CurPane())
 	source.OpenBuffer(previous)
 	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+}
+
+func TestWorkbenchContextMenu(t *testing.T) {
+	runCommand("set workbench.showhidden false")
+	source := action.MainTab().CurPane()
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+	view := dock.GetView()
+	if strings.Contains(string(dock.Buf.Bytes()), "nested.txt") {
+		injectMouse(view.X, view.Y+4, tcell.ButtonPrimary, tcell.ModNone)
+		injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	}
+
+	// A menu opened on the bottom-right terminal cell remains visible.
+	w, h := screen.Screen.Size()
+	selected := -1
+	action.ShowMenu(w-1, h-1, []string{"One", "Two"}, func(index int) { selected = index })
+	DoEvent()
+	r, _, _, _ := sim.GetContent(w-4, h-2)
+	assert.Equal(t, 'O', r)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.Equal(t, 0, selected)
+
+	// Escape is inert, while Enter runs only the menu action selected by keys.
+	action.InfoBar.Msg = ""
+	injectMouse(view.X, view.Y+6, tcell.ButtonSecondary, tcell.ModNone)
+	r, _, _, _ = sim.GetContent(view.X+1, view.Y+6)
+	assert.Equal(t, 'R', r)
+	injectMouse(view.X, view.Y+6, tcell.ButtonNone, tcell.ModNone)
+	r, _, _, _ = sim.GetContent(view.X+1, view.Y+6)
+	assert.Equal(t, 'R', r)
+	injectKey(tcell.KeyEscape, 0, tcell.ModNone)
+	assert.Empty(t, action.InfoBar.Msg)
+	injectMouse(view.X, view.Y+6, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+6, tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.Equal(t, "Rename "+filepath.Join(projectDir, "a.txt"), action.InfoBar.Msg)
+
+	// Directories offer their directory-specific deferred actions.
+	action.InfoBar.Msg = ""
+	injectMouse(view.X, view.Y+4, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	for i := 0; i < 4; i++ {
+		injectKey(tcell.KeyDown, 0, tcell.ModNone)
+	}
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.Equal(t, "Delete "+filepath.Join(projectDir, "alpha"), action.InfoBar.Msg)
+
+	// Refreshing invalidates the row snapshot, so Enter cannot hit a stale row.
+	action.InfoBar.Msg = ""
+	injectMouse(view.X, view.Y+6, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+6, tcell.ButtonNone, tcell.ModNone)
+	runCommand("workbench-refresh")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.Empty(t, action.InfoBar.Msg)
+
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	assert.Same(t, source, action.MainTab().CurPane())
 }
 
 func TestWorkbenchGitStatusBadges(t *testing.T) {

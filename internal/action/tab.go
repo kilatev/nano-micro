@@ -8,9 +8,18 @@ import (
 	"github.com/micro-editor/micro/v2/internal/display"
 	ulua "github.com/micro-editor/micro/v2/internal/lua"
 	"github.com/micro-editor/micro/v2/internal/screen"
+	"github.com/micro-editor/micro/v2/internal/util"
 	"github.com/micro-editor/micro/v2/internal/views"
 	"github.com/micro-editor/tcell/v2"
 )
+
+type menu struct {
+	x, y     int
+	width    int
+	items    []string
+	selected int
+	callback func(int)
+}
 
 // The TabList is a list of tabs and a window to display the tab bar
 // at the top of the screen
@@ -19,6 +28,108 @@ type TabList struct {
 	List      []*Tab
 	Dock      *BufPane
 	DockWidth int
+	menu      *menu
+}
+
+// ShowMenu displays a small application menu. Its callback receives the
+// selected item index.
+func ShowMenu(x, y int, items []string, callback func(int)) {
+	if Tabs == nil || len(items) == 0 {
+		return
+	}
+	w, h := screen.Screen.Size()
+	if w < 2 || h < 1 {
+		return
+	}
+	width := 2
+	for _, item := range items {
+		if n := util.StringWidth([]byte(item), util.CharacterCountInString(item), 4) + 2; n > width {
+			width = n
+		}
+	}
+	if width > w {
+		width = w
+	}
+	if x+width > w {
+		x = w - width
+	}
+	if x < 0 {
+		x = 0
+	}
+	if y+len(items) > h {
+		y = h - len(items)
+	}
+	if y < 0 {
+		y = 0
+	}
+	Tabs.menu = &menu{x: x, y: y, width: width, items: items, callback: callback}
+	screen.Redraw()
+}
+
+// CloseMenu dismisses the application menu without selecting an item.
+func CloseMenu() {
+	if Tabs != nil {
+		Tabs.menu = nil
+		screen.Redraw()
+	}
+}
+
+func (m *menu) selectItem() {
+	callback, selected := m.callback, m.selected
+	CloseMenu()
+	if callback != nil {
+		callback(selected)
+	}
+}
+
+func (m *menu) handleEvent(event tcell.Event) bool {
+	switch e := event.(type) {
+	case *tcell.EventKey:
+		switch e.Key() {
+		case tcell.KeyEscape:
+			CloseMenu()
+		case tcell.KeyUp:
+			m.selected = (m.selected + len(m.items) - 1) % len(m.items)
+		case tcell.KeyDown:
+			m.selected = (m.selected + 1) % len(m.items)
+		case tcell.KeyEnter:
+			m.selectItem()
+		}
+		return true
+	case *tcell.EventMouse:
+		if e.Buttons() == tcell.ButtonNone {
+			return true
+		}
+		x, y := e.Position()
+		if e.Buttons() == tcell.ButtonPrimary && x >= m.x && x < m.x+m.width && y >= m.y && y < m.y+len(m.items) {
+			m.selected = y - m.y
+			m.selectItem()
+		} else {
+			CloseMenu()
+		}
+		return true
+	}
+	return false
+}
+
+func (m *menu) display() {
+	for row, item := range m.items {
+		style := config.DefStyle
+		if row == m.selected {
+			style = style.Reverse(true)
+		}
+		for col := 0; col < m.width; col++ {
+			screen.SetContent(m.x+col, m.y+row, ' ', nil, style)
+		}
+		x := m.x + 1
+		for _, r := range item {
+			if x >= m.x+m.width-1 {
+				break
+			}
+			screen.SetContent(x, m.y+row, r, nil, style)
+			x += util.StringWidth([]byte(string(r)), 1, 4)
+		}
+	}
 }
 
 // NewTabList creates a TabList from a list of buffers by creating a Tab
@@ -155,6 +266,14 @@ func ClearDock() {
 // HandleEvent checks for a resize event or a mouse event on the tab bar
 // otherwise it will forward the event to the currently active tab
 func (t *TabList) HandleEvent(event tcell.Event) {
+	if t.menu != nil {
+		if e, ok := event.(*tcell.EventMouse); ok && e.Buttons() == tcell.ButtonNone {
+			t.ResetMouse()
+		}
+		if t.menu.handleEvent(event) {
+			return
+		}
+	}
 	switch e := event.(type) {
 	case *tcell.EventResize:
 		t.Resize()
@@ -215,6 +334,13 @@ func (t *TabList) Display() {
 		if v.Width > 0 {
 			display.DrawVerticalDivider(v.X+v.Width, v.Y, v.Height)
 		}
+	}
+}
+
+// DisplayMenu draws the application menu after editor panes.
+func (t *TabList) DisplayMenu() {
+	if t.menu != nil {
+		t.menu.display()
 	}
 }
 

@@ -1,6 +1,6 @@
 # Current state
 
-Active milestone: M2.3 — Explorer context menu
+Active milestone: M2.4 — Explorer create, rename, and move
 
 ## Completed
 
@@ -44,11 +44,17 @@ Active milestone: M2.3 — Explorer context menu
 - The workbench simulation covers staged, unstaged, untracked, renamed, and
   deleted paths, including spaces and non-ASCII names. Focused tests,
   `make test`, `make build`, and `./micro -version` pass.
+- M2.3 adds an application-owned, Lua-exposed menu overlay. It clamps to the
+  terminal, supports mouse plus Up/Down/Enter, closes on Escape, and resets
+  captured mouse-release state. Explorer right-clicks use it without replacing
+  explicit user bindings, provide entry-specific deferred actions, and reject
+  a callback after the tree rerenders. The concrete plugin blocker is recorded
+  in [`M2.3-menu-blocker.md`](decisions/M2.3-menu-blocker.md).
 
 ## Current objective
 
-Implement M2.3: a keyboard-accessible Explorer context menu anchored to the
-clicked row. Keep filesystem mutations deferred to M2.4 and M2.5.
+Implement M2.4: Explorer create, rename, and move. Keep deletion deferred to
+M2.5 and open-buffer coordination deferred to M2.6.
 
 ## Blocker
 
@@ -56,7 +62,7 @@ None.
 
 ## Do not start yet
 
-- Explorer work beyond M2.3.
+- Explorer work beyond M2.4.
 - LSP.
 - Git UI.
 - Sessions and recovery.
@@ -66,6 +72,6 @@ None.
 
 1. Enter Plan mode with `/plan`.
 2. Ask Codex to read `AGENTS.md` and the referenced documents.
-3. Work only on `docs/tasks/M2.3-context-menu.md`.
+3. Work only on `docs/tasks/M2.4-create-rename-move.md`.
 4. Review the plan before allowing edits.
 5. Run `/review` before accepting the completed milestone.

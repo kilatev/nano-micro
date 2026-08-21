@@ -512,6 +512,7 @@ func DoEvent() {
 		ep.Display()
 	}
 	action.MainTab().Display()
+	action.Tabs.DisplayMenu()
 	action.InfoBar.Display()
 	screen.Screen.Show()
 

@@ -153,6 +153,12 @@ The packages and their contents are listed below (in Go type signatures):
 
     - `ClearDock()`: detach and close the application dock buffer.
 
+    - `ShowMenu(x int, y int, items []string, callback func(int))`: show a
+      keyboard and mouse accessible application menu. The callback receives
+      the selected item index; Escape dismisses it.
+
+    - `CloseMenu()`: dismiss the application menu without selecting an item.
+
     - `After(t time.Duration, f func())`: run function `f` in the background
        after time `t` elapses. See https://pkg.go.dev/time#Duration for the
        usage of `time.Duration`.

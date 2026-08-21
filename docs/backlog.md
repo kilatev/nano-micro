@@ -28,8 +28,8 @@ inspected.
 
 - `COMPLETE` [`M2.1-read-only-tree.md`](tasks/M2.1-read-only-tree.md)
 - `COMPLETE` [`M2.2-git-status-badges.md`](tasks/M2.2-git-status-badges.md)
-- `ACTIVE` [`M2.3-context-menu.md`](tasks/M2.3-context-menu.md)
-- `SKELETON` [`M2.4-create-rename-move.md`](tasks/M2.4-create-rename-move.md)
+- `COMPLETE` [`M2.3-context-menu.md`](tasks/M2.3-context-menu.md)
+- `ACTIVE` [`M2.4-create-rename-move.md`](tasks/M2.4-create-rename-move.md)
 - `SKELETON` [`M2.5-trash-delete.md`](tasks/M2.5-trash-delete.md)
 - `SKELETON` [`M2.6-open-buffer-coordination.md`](tasks/M2.6-open-buffer-coordination.md)
 

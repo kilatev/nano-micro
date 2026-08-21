@@ -57,6 +57,8 @@ func luaImportMicro() *lua.LTable {
 	}))
 	ulua.L.SetField(pkg, "SetDockBuffer", luar.New(ulua.L, action.SetDockBuffer))
 	ulua.L.SetField(pkg, "ClearDock", luar.New(ulua.L, action.ClearDock))
+	ulua.L.SetField(pkg, "ShowMenu", ulua.L.NewFunction(luaShowMenu))
+	ulua.L.SetField(pkg, "CloseMenu", luar.New(ulua.L, action.CloseMenu))
 	ulua.L.SetField(pkg, "After", luar.New(ulua.L, func(t time.Duration, f func()) {
 		time.AfterFunc(t, func() {
 			timerChan <- f
@@ -64,6 +66,22 @@ func luaImportMicro() *lua.LTable {
 	}))
 
 	return pkg
+}
+
+func luaShowMenu(l *lua.LState) int {
+	x, y := l.CheckInt(1), l.CheckInt(2)
+	itemsTable := l.CheckTable(3)
+	items := make([]string, 0, itemsTable.Len())
+	itemsTable.ForEach(func(_, value lua.LValue) {
+		items = append(items, value.String())
+	})
+	callback := l.CheckFunction(4)
+	action.ShowMenu(x, y, items, func(index int) {
+		if err := l.CallByParam(lua.P{Fn: callback, NRet: 0, Protect: true}, lua.LNumber(index+1)); err != nil {
+			log.Println("menu callback:", err)
+		}
+	})
+	return 0
 }
 
 func luaImportMicroConfig() *lua.LTable {

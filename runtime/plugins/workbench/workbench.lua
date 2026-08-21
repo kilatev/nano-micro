@@ -14,6 +14,7 @@ local statuses = {}
 local changedDirs = {}
 local virtualChildren = {}
 local selectedMode = 1
+local treeVersion = 0
 
 local modes = { "Explorer", "Search", "Git" }
 
@@ -63,6 +64,9 @@ local function add(path, name, depth, isDir, isVirtual, lines)
 end
 
 local function render(sidebar, selected)
+	if selected == 1 then
+		treeVersion = treeVersion + 1
+	end
     local tool = sidebar.Buf
     local lines = {}
     for i, mode in ipairs(modes) do
@@ -183,6 +187,35 @@ function init()
     config.MakeCommand("workbench", open, config.NoComplete)
     config.MakeCommand("workbench-refresh", refreshGit, config.NoComplete)
     config.TryBindKey("Ctrl-e", "command:workbench", false)
+    config.TryBindKey("MouseRight", "lua:workbench.contextMenu", false)
+end
+
+local function menuActions(row)
+    if row.isVirtual then
+        return {}
+    end
+    if row.path == projectRoot then
+        return { "New File", "New Folder" }
+    end
+    if row.isDir then
+        return { "New File", "New Folder", "Rename", "Move", "Delete" }
+    end
+    return { "Rename", "Move", "Delete" }
+end
+
+local function openMenu(bp, row, event)
+    local actions = menuActions(row)
+    if #actions == 0 then
+        return
+    end
+    local target = { path = row.path, isDir = row.isDir, version = treeVersion }
+    local x, y = event:Position()
+    micro.ShowMenu(x, y, actions, function(index)
+        if target.version ~= treeVersion or selectedMode ~= 1 then
+            return
+        end
+        micro.InfoBar():Message(actions[index] .. " " .. target.path)
+    end)
 end
 
 function open(bp, args)
@@ -220,5 +253,17 @@ function onMousePress(bp, event)
         elseif not row.isVirtual then
             micro.CurPane():HandleCommand("open '" .. string.gsub(row.path, "'", "'\\''") .. "'")
         end
+    end
+end
+
+function contextMenu(bp, event)
+    if bp.Buf ~= tool or selectedMode ~= 1 then
+        return
+    end
+    local x, y = event:Position()
+    local selected = bp:LocFromVisual(buffer.Loc(x, y)).Y + 1
+    local row = rows[selected - #modes]
+    if row ~= nil then
+        openMenu(bp, row, event)
     end
 end
