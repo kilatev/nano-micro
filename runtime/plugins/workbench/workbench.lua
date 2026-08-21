@@ -203,6 +203,134 @@ local function menuActions(row)
     return { "Rename", "Move", "Delete" }
 end
 
+local function targetPath(candidate, base)
+    if candidate == nil or candidate == "" then
+        return nil, "Path is required"
+    end
+    local target = filepath.Clean(candidate)
+    if not filepath.IsAbs(target) then
+        target = filepath.Join(base or projectRoot, target)
+    end
+    target = filepath.Clean(target)
+    local relative, err = filepath.Rel(projectRoot, target)
+    if err ~= nil or target == projectRoot or relative == ".." or string.sub(relative, 1, 3) == ".." .. string.char(os.PathSeparator) or filepath.IsAbs(relative) then
+        return nil, "Path must stay within the project"
+    end
+    return target, nil
+end
+
+local function prompt(label, initial, callback)
+    micro.InfoBar():Prompt(label .. ": ", initial, "Workbench", nil, function(response, canceled)
+        if not canceled then
+            callback(response)
+        end
+    end)
+end
+
+local function create(parent, isDir)
+    prompt(isDir and "New folder" or "New file", "", function(name)
+        local target, pathErr = targetPath(name, parent)
+        if pathErr ~= nil then
+            micro.InfoBar():Error(pathErr)
+            return
+        end
+        local _, statErr = os.Stat(target)
+        if statErr == nil then
+            micro.InfoBar():Error("Destination already exists")
+            return
+        end
+        local err
+        if isDir then
+            err = os.Mkdir(target, 493)
+        else
+            local file
+            file, err = os.OpenFile(target, os.O_WRONLY + os.O_CREATE + os.O_EXCL, 420)
+            if err == nil then
+                err = file:Close()
+            end
+        end
+        if err ~= nil then
+            micro.InfoBar():Error("Could not create " .. target .. ": " .. tostring(err))
+            return
+        end
+        render(sidebar, 1)
+    end)
+end
+
+local function rename(row)
+    prompt("Rename", filepath.Base(row.path), function(name)
+        local target, pathErr = targetPath(name, filepath.Dir(row.path))
+        if pathErr ~= nil then
+            micro.InfoBar():Error(pathErr)
+            return
+        end
+        local _, statErr = os.Stat(target)
+        if statErr == nil then
+            micro.InfoBar():Error("Destination already exists")
+            return
+        end
+        local err = os.Rename(row.path, target)
+        if err ~= nil then
+            micro.InfoBar():Error("Could not rename " .. row.path .. ": " .. tostring(err))
+            return
+        end
+        render(sidebar, 1)
+    end)
+end
+
+local function move(row)
+    prompt("Move to (path or folder)", "", function(destination)
+        local target, pathErr = targetPath(destination)
+        if pathErr ~= nil then
+            micro.InfoBar():Error(pathErr)
+            return
+        end
+        local info, statErr = os.Stat(target)
+        if statErr == nil and info:IsDir() then
+            target, pathErr = targetPath(filepath.Join(target, filepath.Base(row.path)))
+            if pathErr ~= nil then
+                micro.InfoBar():Error(pathErr)
+                return
+            end
+            _, statErr = os.Stat(target)
+        end
+        if statErr == nil then
+            micro.InfoBar():Error("Destination already exists")
+            return
+        end
+        local err = os.Rename(row.path, target)
+        if err ~= nil then
+            micro.InfoBar():Error("Could not move " .. row.path .. ": " .. tostring(err))
+            return
+        end
+        render(sidebar, 1)
+    end)
+end
+
+local function trash(row)
+    local target, pathErr = targetPath(row.path)
+    if pathErr ~= nil then
+        micro.InfoBar():Error(pathErr)
+        return
+    end
+    micro.InfoBar():Prompt("Move " .. target .. " to trash? (Enter/Esc): ", "", "Workbench", nil, function(_, canceled)
+        if canceled or row.version ~= treeVersion or selectedMode ~= 1 then
+            return
+        end
+        target, pathErr = targetPath(row.path)
+        if pathErr ~= nil then
+            micro.InfoBar():Error(pathErr)
+            return
+        end
+        local output, err = shell.ExecCommand("gio", "trash", "--", target)
+        if err ~= nil then
+            micro.InfoBar():Error("Could not move " .. target .. " to trash: " .. (output ~= "" and output or tostring(err)))
+            return
+        end
+        render(sidebar, 1)
+    end)
+end
+
 local function openMenu(bp, row, event)
     local actions = menuActions(row)
     if #actions == 0 then
@@ -214,7 +342,20 @@ local function openMenu(bp, row, event)
         if target.version ~= treeVersion or selectedMode ~= 1 then
             return
         end
-        micro.InfoBar():Message(actions[index] .. " " .. target.path)
+        local action = actions[index]
+        if action == "New File" then
+            create(target.path, false)
+        elseif action == "New Folder" then
+            create(target.path, true)
+        elseif action == "Rename" then
+            rename(target)
+        elseif action == "Move" then
+            move(target)
+        elseif action == "Delete" then
+            trash(target)
+        else
+            micro.InfoBar():Message(action .. " " .. target.path)
+        end
     end)
 end
 

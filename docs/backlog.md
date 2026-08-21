@@ -29,9 +29,10 @@ inspected.
 - `COMPLETE` [`M2.1-read-only-tree.md`](tasks/M2.1-read-only-tree.md)
 - `COMPLETE` [`M2.2-git-status-badges.md`](tasks/M2.2-git-status-badges.md)
 - `COMPLETE` [`M2.3-context-menu.md`](tasks/M2.3-context-menu.md)
-- `ACTIVE` [`M2.4-create-rename-move.md`](tasks/M2.4-create-rename-move.md)
-- `SKELETON` [`M2.5-trash-delete.md`](tasks/M2.5-trash-delete.md)
-- `SKELETON` [`M2.6-open-buffer-coordination.md`](tasks/M2.6-open-buffer-coordination.md)
+- `COMPLETE` [`M2.4-create-rename-move.md`](tasks/M2.4-create-rename-move.md)
+- `COMPLETE` [`M2.5-trash-delete.md`](tasks/M2.5-trash-delete.md)
+- `ACTIVE` [`M2.6-open-buffer-coordination.md`](tasks/M2.6-open-buffer-coordination.md)
+- `SKELETON` [`M2.7-move-destination-picker.md`](tasks/M2.7-move-destination-picker.md)
 
 ## M3 — Sessions and recovery
 

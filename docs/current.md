@@ -1,6 +1,6 @@
 # Current state
 
-Active milestone: M2.4 — Explorer create, rename, and move
+Active milestone: M2.6 — Explorer open-buffer filesystem coordination
 
 ## Completed
 
@@ -50,11 +50,24 @@ Active milestone: M2.4 — Explorer create, rename, and move
   explicit user bindings, provide entry-specific deferred actions, and reject
   a callback after the tree rerenders. The concrete plugin blocker is recorded
   in [`M2.3-menu-blocker.md`](decisions/M2.3-menu-blocker.md).
+- M2.4 adds plugin-only Explorer create, rename, and move actions. A shared
+  helper cleans each destination and rejects empty, project-root, and
+  out-of-project targets; exclusive file creation and preflight destination
+  checks prevent silent overwrite. Files and folders use standard `0644` and
+  `0755` permissions. Move accepts either a final path or an existing target
+  folder, retaining the selected basename in the latter case. Failed
+  operations preserve the existing tree, while successful operations re-render
+  it. The simulated workbench covers traversal, collisions, permissions,
+  successful rename, and cross-directory move.
+- M2.5 adds plugin-only trash deletion. Explorer displays the exact target in
+  an Enter-to-confirm, Escape-to-cancel prompt, then calls `gio trash --` with
+  argument-separated paths. Successful calls re-render the tree; a simulated
+  `gio` handoff verifies the exact invocation without modifying the real trash.
 
 ## Current objective
 
-Implement M2.4: Explorer create, rename, and move. Keep deletion deferred to
-M2.5 and open-buffer coordination deferred to M2.6.
+Implement M2.6: Explorer open-buffer filesystem coordination. Keep sessions
+and LSP adapters as no-ops.
 
 ## Blocker
 
@@ -62,7 +75,7 @@ None.
 
 ## Do not start yet
 
-- Explorer work beyond M2.4.
+- Explorer work beyond M2.6.
 - LSP.
 - Git UI.
 - Sessions and recovery.
@@ -72,6 +85,6 @@ None.
 
 1. Enter Plan mode with `/plan`.
 2. Ask Codex to read `AGENTS.md` and the referenced documents.
-3. Work only on `docs/tasks/M2.4-create-rename-move.md`.
+3. Work only on `docs/tasks/M2.6-open-buffer-coordination.md`.
 4. Review the plan before allowing edits.
 5. Run `/review` before accepting the completed milestone.

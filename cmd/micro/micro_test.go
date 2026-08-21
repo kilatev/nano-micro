@@ -437,9 +437,10 @@ func TestWorkbenchContextMenu(t *testing.T) {
 	injectMouse(view.X, view.Y+6, tcell.ButtonSecondary, tcell.ModNone)
 	injectMouse(view.X, view.Y+6, tcell.ButtonNone, tcell.ModNone)
 	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
-	assert.Equal(t, "Rename "+filepath.Join(projectDir, "a.txt"), action.InfoBar.Msg)
+	assert.True(t, action.InfoBar.HasPrompt)
+	injectKey(tcell.KeyEscape, 0, tcell.ModNone)
 
-	// Directories offer their directory-specific deferred actions.
+	// Delete owns Enter through an exact-target confirmation; Escape is inert.
 	action.InfoBar.Msg = ""
 	injectMouse(view.X, view.Y+4, tcell.ButtonSecondary, tcell.ModNone)
 	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
@@ -447,7 +448,10 @@ func TestWorkbenchContextMenu(t *testing.T) {
 		injectKey(tcell.KeyDown, 0, tcell.ModNone)
 	}
 	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
-	assert.Equal(t, "Delete "+filepath.Join(projectDir, "alpha"), action.InfoBar.Msg)
+	assert.True(t, action.InfoBar.HasPrompt)
+	assert.Contains(t, action.InfoBar.Msg, filepath.Join(projectDir, "alpha"))
+	injectKey(tcell.KeyEscape, 0, tcell.ModNone)
+	assert.DirExists(t, filepath.Join(projectDir, "alpha"))
 
 	// Refreshing invalidates the row snapshot, so Enter cannot hit a stale row.
 	action.InfoBar.Msg = ""
@@ -537,6 +541,141 @@ func TestWorkbenchGitStatusBadges(t *testing.T) {
 
 	source.OpenBuffer(previous)
 	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+}
+
+func TestWorkbenchFilesystemOperations(t *testing.T) {
+	source := action.MainTab().CurPane()
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+	view := dock.GetView()
+	line := func(name string) int {
+		for i, text := range strings.Split(string(dock.Buf.Bytes()), "\n") {
+			if strings.Contains(text, name) {
+				return i
+			}
+		}
+		t.Fatalf("missing Explorer row %q in %q", name, dock.Buf.Bytes())
+		return 0
+	}
+	clearPrompt := func(n int) {
+		for i := 0; i < n; i++ {
+			injectKey(tcell.KeyBackspace, 0, tcell.ModNone)
+		}
+	}
+
+	// Root New File creates exclusively, then Root New Folder gives us a collision target.
+	injectMouse(view.X, view.Y+3, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+3, tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	injectString("m2.4 created.txt")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	created := filepath.Join(projectDir, "m2.4 created.txt")
+	assert.FileExists(t, created)
+	createdInfo, err := os.Stat(created)
+	assert.NoError(t, err)
+	assert.Equal(t, os.FileMode(0644), createdInfo.Mode().Perm())
+
+	injectMouse(view.X, view.Y+3, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+3, tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyDown, 0, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	injectString("m2.4 existing")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	existing := filepath.Join(projectDir, "m2.4 existing")
+	assert.DirExists(t, existing)
+	existingInfo, err := os.Stat(existing)
+	assert.NoError(t, err)
+	assert.Equal(t, os.FileMode(0755), existingInfo.Mode().Perm())
+
+	// Traversal and existing targets fail without changing the source.
+	injectMouse(view.X, view.Y+line("m2.4 created.txt"), tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+line("m2.4 created.txt"), tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	clearPrompt(len("m2.4 created.txt"))
+	injectString("../outside")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.FileExists(t, created)
+	assert.True(t, action.InfoBar.HasError)
+
+	injectMouse(view.X, view.Y+line("m2.4 created.txt"), tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+line("m2.4 created.txt"), tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	clearPrompt(len("m2.4 created.txt"))
+	injectString("m2.4 existing")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.FileExists(t, created)
+
+	// A valid rename and moving into an existing directory both rerender the tree.
+	injectMouse(view.X, view.Y+line("m2.4 created.txt"), tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+line("m2.4 created.txt"), tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	clearPrompt(len("m2.4 created.txt"))
+	injectString("m2.4 renamed.txt")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	renamed := filepath.Join(projectDir, "m2.4 renamed.txt")
+	assert.FileExists(t, renamed)
+
+	injectMouse(view.X, view.Y+line("m2.4 renamed.txt"), tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+line("m2.4 renamed.txt"), tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyDown, 0, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	injectString("zeta")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	_, err = os.Stat(renamed)
+	assert.True(t, os.IsNotExist(err))
+	assert.FileExists(t, filepath.Join(projectDir, "zeta", "m2.4 renamed.txt"))
+
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	assert.Same(t, source, action.MainTab().CurPane())
+}
+
+func TestWorkbenchTrashDelete(t *testing.T) {
+	fakeBin := t.TempDir()
+	fakeGio := filepath.Join(fakeBin, "gio")
+	if err := os.WriteFile(fakeGio, []byte("#!/bin/sh\n[ \"$1\" = trash ] && [ \"$2\" = -- ] && mv -- \"$3\" \"$3.trashed\"\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	target := filepath.Join(projectDir, "trash me.txt")
+	if err := os.WriteFile(target, []byte("trash me"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	source := action.MainTab().CurPane()
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+	runCommand("workbench-refresh")
+	view := dock.GetView()
+	line := 0
+	for i, text := range strings.Split(string(dock.Buf.Bytes()), "\n") {
+		if strings.Contains(text, "trash me.txt") {
+			line = i
+			break
+		}
+	}
+	if line == 0 {
+		t.Fatal("missing trash target in Explorer")
+	}
+	injectMouse(view.X, view.Y+line, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+line, tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyDown, 0, tcell.ModNone)
+	injectKey(tcell.KeyDown, 0, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	assert.True(t, action.InfoBar.HasPrompt)
+	assert.Contains(t, action.InfoBar.Msg, target)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	_, err := os.Stat(target)
+	assert.True(t, os.IsNotExist(err))
+	assert.FileExists(t, target+".trashed")
+
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	assert.Same(t, source, action.MainTab().CurPane())
 }
 
 func TestMouse(t *testing.T) {
