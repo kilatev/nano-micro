@@ -15,6 +15,7 @@ local changedDirs = {}
 local virtualChildren = {}
 local selectedMode = 1
 local treeVersion = 0
+local pendingMoveMenu = nil
 
 local modes = { "Explorer", "Search", "Git" }
 
@@ -284,6 +285,19 @@ local function isWithin(path, parent)
     return err == nil and (relative == "." or (relative ~= ".." and string.sub(relative, 1, 3) ~= ".." .. string.char(os.PathSeparator) and not filepath.IsAbs(relative)))
 end
 
+local function fuzzyMatch(query, text)
+    local from = 1
+    query, text = string.lower(query), string.lower(text)
+    for i = 1, #query do
+        local found = string.find(text, string.sub(query, i, i), from, true)
+        if found == nil then
+            return false
+        end
+        from = found + 1
+    end
+    return true
+end
+
 local function move(row, event)
     local destinations = {}
     local function add(path)
@@ -309,40 +323,55 @@ local function move(row, event)
     end
     add(projectRoot)
 
-    local labels = {}
-    for i, destination in ipairs(destinations) do
-        labels[i] = destination == projectRoot and "." or filepath.Rel(projectRoot, destination)
-    end
-    -- ponytail: menu has no scrolling; add a searchable picker if project trees outgrow the terminal.
     local target = { path = row.path, version = treeVersion }
     local x, y = event:Position()
-    micro.ShowMenu(x, y, labels, function(index)
+    prompt("Move filter (blank for all)", "", function(query)
         if target.version ~= treeVersion or selectedMode ~= 1 then
             return
         end
-        local destination = destinations[index]
-        local info, statErr = os.Stat(destination)
-        if statErr ~= nil or not info:IsDir() then
-            micro.InfoBar():Error("Destination no longer exists")
+        local labels, filtered = {}, {}
+        for _, destination in ipairs(destinations) do
+            local label = destination == projectRoot and "." or filepath.Rel(projectRoot, destination)
+            if fuzzyMatch(query, label) then
+                labels[#labels + 1] = label
+                filtered[#filtered + 1] = destination
+            end
+        end
+        if #filtered == 0 then
+            micro.InfoBar():Error("No matching destination folder")
             return
         end
-        local path, pathErr = targetPath(filepath.Join(destination, filepath.Base(target.path)))
-        if pathErr ~= nil then
-            micro.InfoBar():Error(pathErr)
-            return
+        -- ponytail: menu has no scrolling; add a searchable picker if prompt-plus-filter proves inadequate.
+        pendingMoveMenu = function()
+            micro.ShowMenu(x, y, labels, function(index)
+            if target.version ~= treeVersion or selectedMode ~= 1 then
+                return
+            end
+            local destination = filtered[index]
+            local info, statErr = os.Stat(destination)
+            if statErr ~= nil or not info:IsDir() then
+                micro.InfoBar():Error("Destination no longer exists")
+                return
+            end
+            local path, pathErr = targetPath(filepath.Join(destination, filepath.Base(target.path)))
+            if pathErr ~= nil then
+                micro.InfoBar():Error(pathErr)
+                return
+            end
+            _, statErr = os.Stat(path)
+            if statErr == nil then
+                micro.InfoBar():Error("Destination already exists")
+                return
+            end
+            local err = buffer.Rename(target.path, path)
+            if err ~= nil then
+                micro.InfoBar():Error("Could not move " .. target.path .. ": " .. tostring(err))
+                return
+            end
+            micro.Tabs():UpdateNames()
+                render(sidebar, 1)
+            end)
         end
-        _, statErr = os.Stat(path)
-        if statErr == nil then
-            micro.InfoBar():Error("Destination already exists")
-            return
-        end
-        local err = buffer.Rename(target.path, path)
-        if err ~= nil then
-            micro.InfoBar():Error("Could not move " .. target.path .. ": " .. tostring(err))
-            return
-        end
-        micro.Tabs():UpdateNames()
-        render(sidebar, 1)
     end)
 end
 
@@ -445,5 +474,13 @@ function contextMenu(bp, event)
     local row = rows[selected - #modes]
     if row ~= nil then
         openMenu(bp, row, event)
+    end
+end
+
+function onAnyEvent()
+    if pendingMoveMenu ~= nil then
+        local show = pendingMoveMenu
+        pendingMoveMenu = nil
+        show()
     end
 end

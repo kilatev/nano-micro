@@ -33,7 +33,7 @@ inspected.
 - `COMPLETE` [`M2.5-trash-delete.md`](tasks/M2.5-trash-delete.md)
 - `COMPLETE` [`M2.6-open-buffer-coordination.md`](tasks/M2.6-open-buffer-coordination.md)
 - `COMPLETE` [`M2.7-move-destination-picker.md`](tasks/M2.7-move-destination-picker.md)
-- `SKELETON` [`M2.8-move-destination-fuzzy-search.md`](tasks/M2.8-move-destination-fuzzy-search.md)
+- `COMPLETE` [`M2.8-move-destination-fuzzy-search.md`](tasks/M2.8-move-destination-fuzzy-search.md)
 
 ## M3 — Sessions and recovery
 

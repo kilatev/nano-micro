@@ -622,6 +622,7 @@ func TestWorkbenchFilesystemOperations(t *testing.T) {
 	injectMouse(view.X, view.Y+line("m2.4 renamed.txt"), tcell.ButtonNone, tcell.ModNone)
 	injectKey(tcell.KeyDown, 0, tcell.ModNone)
 	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
 	injectKey(tcell.KeyDown, 0, tcell.ModNone)
 	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
 	_, err = os.Stat(renamed)
@@ -651,7 +652,7 @@ func TestWorkbenchMoveDestinationPicker(t *testing.T) {
 	if dock == nil {
 		t.Fatal("workbench dock was not opened")
 	}
-	move := func(name string) {
+	move := func(name, query string) {
 		line := 0
 		for i, text := range strings.Split(string(dock.Buf.Bytes()), "\n") {
 			if strings.Contains(text, name) {
@@ -667,8 +668,10 @@ func TestWorkbenchMoveDestinationPicker(t *testing.T) {
 		injectMouse(view.X, view.Y+line, tcell.ButtonNone, tcell.ModNone)
 		injectKey(tcell.KeyDown, 0, tcell.ModNone)
 		injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+		injectString(query)
+		injectKey(tcell.KeyEnter, 0, tcell.ModNone)
 	}
-	move("m2.7-source.txt")
+	move("m2.7-source.txt", "")
 	// The picker lists ., alpha, then alpha/m2.7-destination.
 	injectKey(tcell.KeyDown, 0, tcell.ModNone)
 	injectKey(tcell.KeyDown, 0, tcell.ModNone)
@@ -679,7 +682,7 @@ func TestWorkbenchMoveDestinationPicker(t *testing.T) {
 	assert.FileExists(t, filepath.Join(destination, "m2.7-source.txt"))
 
 	// A tree refresh invalidates a displayed picker callback.
-	move("m2.7-stale.txt")
+	move("m2.7-stale.txt", "")
 	runCommand("workbench-refresh")
 	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
 	assert.FileExists(t, stalePath)
@@ -689,12 +692,62 @@ func TestWorkbenchMoveDestinationPicker(t *testing.T) {
 		t.Fatal(err)
 	}
 	runCommand("workbench-refresh")
-	move("m2.7-source.txt")
+	move("m2.7-source.txt", "")
 	injectKey(tcell.KeyDown, 0, tcell.ModNone)
 	injectKey(tcell.KeyDown, 0, tcell.ModNone)
 	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
 	assert.FileExists(t, sourcePath)
 	assert.FileExists(t, filepath.Join(destination, "m2.7-source.txt"))
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+}
+
+func TestWorkbenchMoveDestinationFuzzySearch(t *testing.T) {
+	destination := filepath.Join(projectDir, "zeta", "m2.8-destination")
+	sourcePath := filepath.Join(projectDir, "m2.8-source.txt")
+	noMatchPath := filepath.Join(projectDir, "m2.8-no-match.txt")
+	if err := os.Mkdir(destination, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{sourcePath, noMatchPath} {
+		if err := os.WriteFile(path, []byte("source"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+	move := func(name, query string) {
+		line := 0
+		for i, text := range strings.Split(string(dock.Buf.Bytes()), "\n") {
+			if strings.Contains(text, name) {
+				line = i
+				break
+			}
+		}
+		if line == 0 {
+			t.Fatalf("missing move target %q in Explorer", name)
+		}
+		view := dock.GetView()
+		injectMouse(view.X, view.Y+line, tcell.ButtonSecondary, tcell.ModNone)
+		injectMouse(view.X, view.Y+line, tcell.ButtonNone, tcell.ModNone)
+		injectKey(tcell.KeyDown, 0, tcell.ModNone)
+		injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+		injectString(query)
+		injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	}
+
+	move("m2.8-source.txt", "m8d")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	_, err := os.Stat(sourcePath)
+	assert.True(t, os.IsNotExist(err))
+	assert.FileExists(t, filepath.Join(destination, "m2.8-source.txt"))
+
+	move("m2.8-no-match.txt", "qqqq")
+	assert.True(t, action.InfoBar.HasError)
+	assert.FileExists(t, noMatchPath)
 	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
 }
 

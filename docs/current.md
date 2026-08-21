@@ -76,19 +76,23 @@ Active milestone: none
   rechecks stale selections, destination existence, and overwrite protection
   before using `buffer.Rename`. Simulated tests cover nested selection, stale
   callbacks, and collisions; manual Move verification passed.
+- M2.8 adds a case-insensitive fuzzy subsequence filter before the Move
+  destination menu. It retains M2.7's destination checks and defers menu
+  display through the plugin event hook to avoid re-entrant Lua callbacks.
+  Simulated fuzzy-match and no-match tests pass; manual verification passed.
 
 ## Current objective
 
-M2.7 is complete. M2.8 is recorded for a future fuzzy destination search but
-remains a skeleton. Sessions and LSP remain absent.
+M2 Explorer work is complete. Refine and activate M3.1 before beginning
+sessions or recovery work.
 
 ## Blocker
 
-M2.8 must be refined and activated before further Explorer work.
+M3.1 is still a skeleton task and must be refined before activation.
 
 ## Do not start yet
 
-- Explorer work beyond M2.7 until M2.8 is refined and activated.
+- M3 work until M3.1 is refined and activated.
 - LSP.
 - Git UI.
 - Sessions and recovery.
