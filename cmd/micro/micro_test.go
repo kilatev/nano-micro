@@ -632,6 +632,61 @@ func TestWorkbenchFilesystemOperations(t *testing.T) {
 	assert.Same(t, source, action.MainTab().CurPane())
 }
 
+func TestWorkbenchOpenBufferRename(t *testing.T) {
+	oldPath := filepath.Join(projectDir, "m2.6-old.txt")
+	newPath := filepath.Join(projectDir, "m2.6-new.txt")
+	if err := os.WriteFile(oldPath, []byte("before"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	openFile(oldPath)
+	source := action.MainTab().CurPane()
+	openBuffer := source.Buf
+
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+	line := 0
+	for i, text := range strings.Split(string(dock.Buf.Bytes()), "\n") {
+		if strings.Contains(text, "m2.6-old.txt") {
+			line = i
+			break
+		}
+	}
+	if line == 0 {
+		t.Fatal("missing rename target in Explorer")
+	}
+	view := dock.GetView()
+	injectMouse(view.X, view.Y+line, tcell.ButtonSecondary, tcell.ModNone)
+	injectMouse(view.X, view.Y+line, tcell.ButtonNone, tcell.ModNone)
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+	for range "m2.6-old.txt" {
+		injectKey(tcell.KeyBackspace, 0, tcell.ModNone)
+	}
+	injectString("m2.6-new.txt")
+	injectKey(tcell.KeyEnter, 0, tcell.ModNone)
+
+	assert.Same(t, openBuffer, source.Buf)
+	assert.Equal(t, newPath, openBuffer.Path)
+	_, err := os.Stat(oldPath)
+	assert.True(t, os.IsNotExist(err))
+	assert.FileExists(t, newPath)
+	openBuffer.Insert(openBuffer.Start(), "edited ")
+	if err := openBuffer.Save(); err != nil {
+		t.Fatal(err)
+	}
+	contents, err := os.ReadFile(newPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "edited before\n", string(contents))
+	_, err = os.Stat(oldPath)
+	assert.True(t, os.IsNotExist(err))
+
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+}
+
 func TestWorkbenchTrashDelete(t *testing.T) {
 	fakeBin := t.TempDir()
 	fakeGio := filepath.Join(fakeBin, "gio")

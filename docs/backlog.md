@@ -31,7 +31,7 @@ inspected.
 - `COMPLETE` [`M2.3-context-menu.md`](tasks/M2.3-context-menu.md)
 - `COMPLETE` [`M2.4-create-rename-move.md`](tasks/M2.4-create-rename-move.md)
 - `COMPLETE` [`M2.5-trash-delete.md`](tasks/M2.5-trash-delete.md)
-- `ACTIVE` [`M2.6-open-buffer-coordination.md`](tasks/M2.6-open-buffer-coordination.md)
+- `COMPLETE` [`M2.6-open-buffer-coordination.md`](tasks/M2.6-open-buffer-coordination.md)
 - `SKELETON` [`M2.7-move-destination-picker.md`](tasks/M2.7-move-destination-picker.md)
 
 ## M3 — Sessions and recovery

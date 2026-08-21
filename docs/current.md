@@ -63,19 +63,27 @@ Active milestone: M2.6 — Explorer open-buffer filesystem coordination
   an Enter-to-confirm, Escape-to-cancel prompt, then calls `gio trash --` with
   argument-separated paths. Successful calls re-render the tree; a simulated
   `gio` handoff verifies the exact invocation without modifying the real trash.
+- M2.6 adds `buffer.Rename(old, new)`, the documented core blocker for Lua
+  Explorer coordination. It rejects a destination owned by a different open
+  shared buffer, renames on disk, then updates the shared path, backup
+  ownership, modification time, and path settings. Explorer uses it for both
+  rename and move and refreshes tab labels. State tests cover Explorer
+  rename/save, shared open views, conflicting destinations, and filesystem
+  failure; focused tests, `make test`, `make build`, and `./micro -version`
+  pass.
 
 ## Current objective
 
-Implement M2.6: Explorer open-buffer filesystem coordination. Keep sessions
-and LSP adapters as no-ops.
+M2.6 is complete. Refine and activate M2.7 before beginning further Explorer
+work. Sessions and LSP remain absent.
 
 ## Blocker
 
-None.
+M2.7 is still a skeleton task and must be refined before activation.
 
 ## Do not start yet
 
-- Explorer work beyond M2.6.
+- Explorer work beyond M2.6 until M2.7 is refined and activated.
 - LSP.
 - Git UI.
 - Sessions and recovery.

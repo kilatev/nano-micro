@@ -269,11 +269,12 @@ local function rename(row)
             micro.InfoBar():Error("Destination already exists")
             return
         end
-        local err = os.Rename(row.path, target)
+        local err = buffer.Rename(row.path, target)
         if err ~= nil then
             micro.InfoBar():Error("Could not rename " .. row.path .. ": " .. tostring(err))
             return
         end
+        micro.Tabs():UpdateNames()
         render(sidebar, 1)
     end)
 end
@@ -298,11 +299,12 @@ local function move(row)
             micro.InfoBar():Error("Destination already exists")
             return
         end
-        local err = os.Rename(row.path, target)
+        local err = buffer.Rename(row.path, target)
         if err ~= nil then
             micro.InfoBar():Error("Could not move " .. row.path .. ": " .. tostring(err))
             return
         end
+        micro.Tabs():UpdateNames()
         render(sidebar, 1)
     end)
 end
