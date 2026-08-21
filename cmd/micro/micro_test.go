@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-errors/errors"
@@ -17,6 +18,8 @@ import (
 )
 
 var tempDir string
+var projectDir string
+var workingDir string
 var sim tcell.SimulationScreen
 
 func init() {
@@ -74,6 +77,10 @@ func startup(args []string) (tcell.SimulationScreen, error) {
 
 	action.InitBindings()
 	action.InitCommands()
+	err = config.RunPluginFn("preinit")
+	if err != nil {
+		return nil, err
+	}
 
 	err = config.InitColorscheme()
 	if err != nil {
@@ -101,7 +108,11 @@ func startup(args []string) (tcell.SimulationScreen, error) {
 }
 
 func cleanup() {
+	if err := os.Chdir(workingDir); err != nil {
+		log.Println(err)
+	}
 	os.RemoveAll(tempDir)
+	os.RemoveAll(projectDir)
 }
 
 func handleEvent() {
@@ -189,6 +200,32 @@ func createTestFile(t *testing.T, content string) string {
 
 func TestMain(m *testing.M) {
 	var err error
+	workingDir, err = os.Getwd()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	projectDir, err = os.MkdirTemp("", "micro_workbench")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if err := os.Mkdir(filepath.Join(projectDir, "alpha"), 0755); err != nil {
+		log.Fatalln(err)
+	}
+	if err := os.Mkdir(filepath.Join(projectDir, "zeta"), 0755); err != nil {
+		log.Fatalln(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "alpha", "nested.txt"), []byte("nested content"), 0644); err != nil {
+		log.Fatalln(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "a.txt"), []byte("root content"), 0644); err != nil {
+		log.Fatalln(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, ".hidden"), []byte("hidden content"), 0644); err != nil {
+		log.Fatalln(err)
+	}
+	if err := os.Chdir(projectDir); err != nil {
+		log.Fatalln(err)
+	}
 	sim, err = startup([]string{})
 	if err != nil {
 		log.Fatalln(err)
@@ -255,7 +292,7 @@ func TestWorkbench(t *testing.T) {
 		t.Fatal("workbench dock was not opened")
 	}
 	tool := toolPane.Buf
-	assert.Equal(t, "> Explorer\n  Search\n  Git\n", string(tool.Bytes()))
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  + alpha\n  + zeta\n    a.txt\n", string(tool.Bytes()))
 	assert.True(t, tool.Type.Readonly)
 	assert.True(t, tool.Type.Scratch)
 	assert.Same(t, original, findBuffer(file))
@@ -305,6 +342,47 @@ func TestWorkbench(t *testing.T) {
 	assert.Len(t, tab.Panes, panes)
 	assert.Same(t, source, tab.CurPane())
 	assert.Equal(t, originalView, source.GetView())
+}
+
+func TestWorkbenchExplorer(t *testing.T) {
+	source := action.MainTab().CurPane()
+	previous := source.Buf
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
+	dock := action.Tabs.Dock
+	if dock == nil {
+		t.Fatal("workbench dock was not opened")
+	}
+
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  + alpha\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
+	assert.NotContains(t, string(dock.Buf.Bytes()), ".hidden")
+
+	view := dock.GetView()
+	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  - alpha\n      nested.txt\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
+	assert.Same(t, source, action.MainTab().CurPane())
+
+	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	assert.Equal(t, "> Explorer\n  Search\n  Git\n- "+projectDir+"\n  + alpha\n  + zeta\n    a.txt\n", string(dock.Buf.Bytes()))
+
+	runCommand("set workbench.showhidden true")
+	assert.True(t, config.GetGlobalOption("workbench.showhidden").(bool))
+	injectMouse(view.X, view.Y+1, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+1, tcell.ButtonNone, tcell.ModNone)
+	injectMouse(view.X, view.Y, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y, tcell.ButtonNone, tcell.ModNone)
+	assert.Contains(t, string(dock.Buf.Bytes()), "    .hidden\n")
+
+	injectMouse(view.X, view.Y+4, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+4, tcell.ButtonNone, tcell.ModNone)
+	injectMouse(view.X, view.Y+5, tcell.Button1, tcell.ModNone)
+	injectMouse(view.X, view.Y+5, tcell.ButtonNone, tcell.ModNone)
+	assert.NotNil(t, findBuffer(filepath.Join(projectDir, "alpha", "nested.txt")))
+	assert.Same(t, dock, action.Tabs.Dock)
+	assert.Same(t, source, action.MainTab().CurPane())
+	source.OpenBuffer(previous)
+	injectKey(tcell.KeyCtrlE, rune(tcell.KeyCtrlE), tcell.ModCtrl)
 }
 
 func TestMouse(t *testing.T) {

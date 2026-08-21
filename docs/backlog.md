@@ -26,8 +26,8 @@ inspected.
 
 ## M2 — Explorer
 
-- `SKELETON` [`M2.1-read-only-tree.md`](tasks/M2.1-read-only-tree.md)
-- `SKELETON` [`M2.2-git-status-badges.md`](tasks/M2.2-git-status-badges.md)
+- `COMPLETE` [`M2.1-read-only-tree.md`](tasks/M2.1-read-only-tree.md)
+- `ACTIVE` [`M2.2-git-status-badges.md`](tasks/M2.2-git-status-badges.md)
 - `SKELETON` [`M2.3-context-menu.md`](tasks/M2.3-context-menu.md)
 - `SKELETON` [`M2.4-create-rename-move.md`](tasks/M2.4-create-rename-move.md)
 - `SKELETON` [`M2.5-trash-delete.md`](tasks/M2.5-trash-delete.md)

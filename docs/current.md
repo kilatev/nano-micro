@@ -1,6 +1,6 @@
 # Current state
 
-Active milestone: M1
+Active milestone: M2.2 — Explorer Git status badges
 
 ## Completed
 
@@ -33,10 +33,16 @@ Active milestone: M1
 - M1.5 binds `Ctrl+E` to toggle the bundled workbench. An explicit user
   `Ctrl-e` binding remains untouched; users can keep command mode or choose
   another shortcut in `bindings.json`.
+- M2.1 is complete as a plugin-only Explorer: it captures the launch working
+  directory, starts with that root expanded, sorts directories before files,
+  hides dot entries by default, and opens clicked files through Micro's normal
+  `open` command. The 24-column dock stays attached and does not take focus.
 
 ## Current objective
 
-M1.4 is complete. Do not begin M2 until its first task is refined and reviewed.
+Implement M2.2 in the bundled workbench plugin only: explicit, testable Git
+status badges on the M2.1 tree. The M1.5 shortcut and M2.1 read-only tree are
+complete.
 
 ## Blocker
 
@@ -44,7 +50,7 @@ None.
 
 ## Do not start yet
 
-- Explorer.
+- Explorer work beyond M2.2.
 - LSP.
 - Git UI.
 - Sessions and recovery.
